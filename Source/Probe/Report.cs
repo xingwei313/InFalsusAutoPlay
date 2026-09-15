@@ -19,6 +19,7 @@ namespace InFalsusAutoPlay
                    $"{Verdicts(song)} | " +
                    $"judgementPoint={JudgementPoint.Suppressed} ghostRescues={JudgementPoint.Rescues} | " +
                    $"{Row()} | " +
+                   $"resultsSkipped={ResultsSkip.Skips} | " +
                    $"hooks: skyJudgements={Hooks.SkyJudgements} trackEnables={Hooks.TrackEnables}";
         }
 

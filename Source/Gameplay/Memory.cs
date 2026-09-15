@@ -70,6 +70,31 @@ namespace InFalsusAutoPlay
             return type >= 0 && type <= 8;
         }
 
+        // ---------------------------------------------------------------- text
+
+        /// <summary>
+        /// The characters of an IL2CPP string, or null when the pointer is not one.
+        ///
+        /// Both reads go through the interop's own string accessors rather than through offsets into
+        /// the object: an IL2CPP `System.String` carries its length inside itself with no terminator,
+        /// so where those two values sit is the interop's ABI knowledge to hold, not this mod's — the
+        /// same reason every field offset here is asked for by name.
+        ///
+        /// What is this mod's business is refusing to hand a pointer to them at all unless it looks
+        /// like an object, and refusing to believe a length past what any caller here reads: a pointer
+        /// that is not a string would otherwise be walked for as long as the garbage at its length
+        /// field says.
+        /// </summary>
+        internal static string Text(IntPtr s, int limit = 64)
+        {
+            if (!LooksLikeObject(s)) return null;
+
+            int length = Il2CppInterop.Runtime.IL2CPP.il2cpp_string_length(s);
+            if (length <= 0 || length > limit) return null;
+
+            return Il2CppInterop.Runtime.IL2CPP.Il2CppStringToManaged(s);
+        }
+
         // ---------------------------------------------------------------- the input array
 
         /// <summary>Address of the input array's first element, or Zero if it is not usable.</summary>

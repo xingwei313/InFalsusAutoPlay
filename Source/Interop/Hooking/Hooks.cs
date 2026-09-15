@@ -86,11 +86,12 @@ namespace InFalsusAutoPlay
             Count(InstallNotePlayer());
             Count(InstallTrackUpdate());
             Count(InstallTrackEnable());
+            Count(InstallSceneTransition());
 
             // The settings page is the one part that can be left out entirely. That is a source-level
             // constant rather than a setting — see Config.SettingsRow. There is no message for the
             // off case: this gate is the only thing that has to know, because with `_WF` unhooked
-            // nothing on the page can reach the mod at all, and the count below reads 6/6 either way.
+            // nothing on the page can reach the mod at all, and the count below reads 8/8 either way.
             if (Config.SettingsRow)
             {
                 // One of the settings hooks is resident, and only one. `_WF` carries the page's own
@@ -109,7 +110,7 @@ namespace InFalsusAutoPlay
 #endif
             }
 
-            Diagnostics.Info($"{installed}/{attempted} hooks installed");
+            Diagnostics.Load($"{installed}/{attempted} hooks installed");
             if (installed < attempted)
                 Diagnostics.Warn("a hook is missing; whatever it drives will silently do nothing");
         }
@@ -122,6 +123,7 @@ namespace InFalsusAutoPlay
             DetachNotePlayer();
             DetachTrackUpdate();
             DetachTrackEnable();
+            DetachSceneTransition();
 #if DEBUG
             DetachSettingsAwake();   // the hook itself is Debug-only; see Probe/SettingsAwakeHook.cs
 #endif

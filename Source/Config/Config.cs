@@ -3,13 +3,14 @@ namespace InFalsusAutoPlay
     /// <summary>
     /// What the mod can be told to do, and the constants that decide how it does it.
     ///
-    /// Exactly one thing is settable: <see cref="Autoplay"/>, in a plain text file next to
-    /// MelonLoader's own. The game's userV2.prefs is not an option — its keys are static readonly
-    /// strings compiled into the game, and a mod cannot add one. Everything else is a constant.
+    /// Two things are settable — <see cref="Autoplay"/> and <see cref="NoScore"/> — in a plain text
+    /// file next to MelonLoader's own. The game's userV2.prefs is not an option: its keys are static
+    /// readonly strings compiled into the game, and a mod cannot add one. Everything else is a
+    /// constant.
     ///
-    /// A const is a decision that has been made; the setting is the one thing that is the user's. A
-    /// new setting's default answer is no: unless there is a nameable situation in which someone would
-    /// want to change it, it is a const.
+    /// A const is a decision that has been made; a setting is something the user's answer can differ
+    /// on. A new setting's default answer is no: unless there is a nameable situation in which someone
+    /// would want to change it, it is a const — and a decided thing is never dressed up as one.
     /// </summary>
     internal static class Config
     {
@@ -23,6 +24,24 @@ namespace InFalsusAutoPlay
         /// checking the offsets against a human's play.
         /// </summary>
         internal static bool Autoplay = true;
+
+        /// <summary>
+        /// Whether a song the mod played is allowed to leave a record.
+        ///
+        /// On, such a song ends without the results screen: the game is sent back to the song list at
+        /// the moment it would have loaded that screen, and the screen is the only thing that writes a
+        /// score, a clear, an unlock or a drop — so the play leaves nothing behind. That is the point
+        /// of the switch rather than a side effect of it: what autoplay produces is not a performance,
+        /// and a record of one is a record of the mod.
+        ///
+        /// It is a key in the file and nowhere else — not on the settings page's borrowed row, which
+        /// is reached mid-song and says one thing at a time. A file the mod writes does not name it
+        /// either: `noscore=0` is added by hand, to the one line the file came with. Its default
+        /// answer is yes, against the rule for a new setting, because the mod's whole purpose is to
+        /// play for the player. Off is a real answer all the same: watching an autoplayed run through
+        /// to the results screen is how the score the mod produces is read.
+        /// </summary>
+        internal static bool NoScore = true;
 
         // ---------------------------------------------------------------- where it lives
 
@@ -87,8 +106,8 @@ namespace InFalsusAutoPlay
         // ---------------------------------------------------------------- reporting
 
         /// <summary>
-        /// One line saying what governs a run — the one setting and the timings that shape the input
-        /// it drives. The constants are deliberately not in it: each has one reachable value, so
+        /// One line saying what governs a run — the two settings and the timings that shape the input
+        /// they drive. The constants are deliberately not in it: each has one reachable value, so
         /// naming them would print the same thing on every run of every build.
         ///
         /// The text is Debug-only, but the method has to exist in a Release build: `[Conditional]`
@@ -98,7 +117,7 @@ namespace InFalsusAutoPlay
         internal static string Summary()
         {
 #if DEBUG
-            return $"autoplay={(Autoplay ? "on" : "off")} " +
+            return $"autoplay={(Autoplay ? "on" : "off")} noscore={(NoScore ? "on" : "off")} " +
                    $"presslead={PressLeadMs:F0}ms taphold={TapHoldMs:F0}ms holdslack={HoldSlackMs:F0}ms";
 #else
             return "";

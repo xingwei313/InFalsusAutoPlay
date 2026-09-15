@@ -3,46 +3,83 @@ using System.Diagnostics;
 namespace InFalsusAutoPlay
 {
     /// <summary>
-    /// Logging, under one prefix so that everything this mod says can be found in a game log that
-    /// also carries MelonLoader's and every other mod's output.
+    /// Logging. Every line goes out through MelonLoader's logger, which prefixes it with this mod's
+    /// assembly name — so this mod's lines are already findable in a log that also carries
+    /// MelonLoader's and every other mod's output, and adding a tag of its own would print the mod's
+    /// name twice.
     ///
-    /// Debug builds only. `[Conditional("DEBUG")]` removes the call — and with it the string its
-    /// argument builds — from a Release build, so a Release assembly carries no log text at all.
-    /// Nothing needs an `#if` at the call site: the reason for writing a line is a debugging one, so
-    /// the mechanism is in one place rather than at a hundred.
-    ///
-    /// What that costs: a Release build is silent. That is the trade the mod is built on — the
-    /// function is what ships, and if something needs explaining, `build.bat Debug` is the build
-    /// that explains it.
-    ///
-    /// One consequence worth knowing, because it is easy to get backwards: `[Conditional]` removes
-    /// the call and the argument's evaluation, but the argument still has to compile. So a method
-    /// named inside a log argument (`Describe`, `Summary`) must exist in Release as well, however
-    /// little of it is left.
+    /// <para>
+    /// Four levels, and which of them a Release build carries is the whole of the design:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>
+    /// <see cref="Load"/> is compiled into every build and is deliberately three lines: loaded, the
+    /// offset summary, the installed-hook count. A release is the build users run, so it has to be
+    /// able to say whether the mod is working and whether a game update moved something — but the
+    /// signal for the second is `moved=3`, and which three is the debug build's job.
+    /// </description></item>
+    /// <item><description>
+    /// <see cref="Error"/> is compiled into every build. It is the one thing a release must never
+    /// swallow: the mod has stopped doing its work, and nobody is going to look for that in a build
+    /// they were told to reinstall.
+    /// </description></item>
+    /// <item><description>
+    /// <see cref="Info"/> and <see cref="Warn"/> are Debug-only, and by a compile-time switch rather
+    /// than a runtime one: `[Conditional("DEBUG")]` removes the call <b>and the string its argument
+    /// builds</b>, so a Release assembly carries neither the narration about what the mod is doing
+    /// while playing nor the per-item detail of its own loading — no per-frame status, no chart
+    /// contents, no settings-page walkthrough, no probes, no per-hook and per-offset lines. That is
+    /// the bulk of what this class emits, and keeping it out is what makes a release small.
+    /// </description></item>
+    /// </list>
+    /// <para>
+    /// The config path is deliberately not in any of them: `config: &lt;path&gt;` is an
+    /// <see cref="Info"/> line, so a release does not print where the user's file is.
+    /// </para>
+    /// <para>
+    /// One consequence worth knowing, because it is easy to get backwards: `[Conditional]` removes the
+    /// call and the argument's evaluation, but the argument still has to compile. So a method named
+    /// inside a log argument (`Describe`, `Summary`) must exist in Release as well, however little of
+    /// it is left.
+    /// </para>
     /// </summary>
     internal static class Diagnostics
     {
+        /// <summary>Narration about a run — Debug builds only. See the class summary.</summary>
         [Conditional("DEBUG")]
         internal static void Info(string message)
         {
 #if DEBUG
-            MelonLoader.MelonLogger.Msg("[AutoPlay] " + message);
+            MelonLoader.MelonLogger.Msg(message);
 #endif
         }
 
+        /// <summary>
+        /// The three lines that say the mod is here and healthy, in every build: that it loaded, what
+        /// the game answered when asked where its fields are, and how many hooks went in.
+        ///
+        /// Deliberately few. A release is the build users run and it has to be able to answer "is this
+        /// working, and did a game update move something" without a debug build — but the answer to
+        /// both is a summary: `moved=3` is the signal, and which three is what the debug build is for.
+        /// Every line here is a string in the shipped assembly, and a release that carries a
+        /// per-offset, per-method, per-hook narration of its own loading is a release paying for a log
+        /// nobody reads.
+        /// </summary>
+        internal static void Load(string message) => MelonLoader.MelonLogger.Msg(message);
+
+        /// <summary>Something is wrong and the mod has stopped doing it: a detour faulted.</summary>
+        internal static void Error(string message) => MelonLoader.MelonLogger.Error(message);
+
+        /// <summary>
+        /// Something is wrong and the mod works around it: a missing hook, an offset that would not
+        /// resolve. Debug builds only, like <see cref="Info"/> — see the class summary — and the
+        /// summary lines above are what a release has instead.
+        /// </summary>
         [Conditional("DEBUG")]
         internal static void Warn(string message)
         {
 #if DEBUG
-            MelonLoader.MelonLogger.Warning("[AutoPlay] " + message);
-#endif
-        }
-
-        [Conditional("DEBUG")]
-        internal static void Error(string message)
-        {
-#if DEBUG
-            MelonLoader.MelonLogger.Error("[AutoPlay] " + message);
+            MelonLoader.MelonLogger.Warning(message);
 #endif
         }
 

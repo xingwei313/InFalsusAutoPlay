@@ -25,7 +25,7 @@ namespace InFalsusAutoPlay
 
         public override void OnInitializeMelon()
         {
-            Diagnostics.Info("InFalsusAutoPlay loading...");
+            Diagnostics.Load("InFalsusAutoPlay loading...");
         }
 
         // The interop assemblies are only wired up after MelonLoader has generated them, so the hooks go
@@ -47,7 +47,7 @@ namespace InFalsusAutoPlay
                 SettingsOffsets.Resolve();
 
 #if DEBUG
-                Diagnostics.Info(FieldResolver.Stats());
+                Diagnostics.Load(FieldResolver.Stats());
 #endif
 
                 Hooks.Install();
