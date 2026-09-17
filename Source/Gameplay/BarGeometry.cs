@@ -3,8 +3,9 @@ using System;
 namespace InFalsusAutoPlay
 {
     /// <summary>
-    /// Where a note's own geometry puts it at a given moment. Only used to place a hit effect; no
-    /// judgement consults it.
+    /// Where a note's own geometry puts it at a given moment. Nothing judges from it: it is how the
+    /// sky cursor is steered, and the cursor is what decides where a flick's hit effect is drawn and
+    /// whether a bar counts as being held — see <see cref="Sky"/>.
     /// </summary>
     internal static class BarGeometry
     {
@@ -43,17 +44,35 @@ namespace InFalsusAutoPlay
             double elapsed = delta > 0.0 ? 0.0 : -delta;
             double progress = Math.Min(1.0, elapsed / duration);
 
-            return Centre(note, progress);
+            return Centre(Memory.F32(note + Offsets.Note.StartX),
+                          Memory.F32(note + Offsets.Note.EndX),
+                          Memory.F32(note + Offsets.Note.StartWidth),
+                          Memory.F32(note + Offsets.Note.EndWidth),
+                          Memory.I32(note + Offsets.Note.Flags),
+                          progress);
         }
 
-        private static float Centre(IntPtr note, double progress)
+        /// <summary>
+        /// The same centre, from the chart's own copy of the note. A note's progress is
+        /// `(now - start) / (end - start)` and its `delta` is `start - now`, so this is the same
+        /// number the note-memory version computes — the song clock stands in for the `_Ee` the game
+        /// rewrites every frame.
+        /// </summary>
+        internal static float CurrentCentreX(ChartNote note, double nowMs)
         {
-            float startX = Memory.F32(note + Offsets.Note.StartX);
-            float endX = Memory.F32(note + Offsets.Note.EndX);
-            float startW = Memory.F32(note + Offsets.Note.StartWidth);
-            float endW = Memory.F32(note + Offsets.Note.EndWidth);
-            int flags = Memory.I32(note + Offsets.Note.Flags);
+            double duration = note.EndMs - note.StartMs;
+            if (duration <= 0.5) return note.StartX;
 
+            double progress = (nowMs - note.StartMs) / duration;
+            if (progress < 0.0) progress = 0.0;
+            else if (progress > 1.0) progress = 1.0;
+
+            return Centre(note.StartX, note.EndX, note.StartWidth, note.EndWidth, note.Flags, progress);
+        }
+
+        private static float Centre(float startX, float endX, float startW, float endW,
+                                    int flags, double progress)
+        {
             float startHalf = startW * 0.5f;
             float endHalf = endW * 0.5f;
 

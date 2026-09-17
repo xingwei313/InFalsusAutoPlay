@@ -13,7 +13,7 @@ namespace InFalsusAutoPlay
     ///
     /// <list type="number">
     /// <item><description>read the song clock, and notice a rewind (restart or seek)</description></item>
-    /// <item><description>pin the sky cursor back to the value autoplay owns</description></item>
+    /// <item><description>aim the sky cursor at the bar being held, and pin it to that value</description></item>
     /// <item><description>release and press the floor lanes</description></item>
     /// <item><description>tally the verdicts of notes that have finished</description></item>
     /// </list>
@@ -118,7 +118,11 @@ namespace InFalsusAutoPlay
             // Both input writers have already run by now — `_Pz` and `_Qz` each write their press or
             // their cursor and only then call `_Oz` — so this is the last point before the game reads,
             // and therefore the place to undo them.
-            if (Config.Sky) Sky.Hold(engine);
+            if (Config.Sky)
+            {
+                Sky.AimAtBar(Chart, nowMs);
+                Sky.Hold(engine);
+            }
 
             IntPtr lanes = Memory.InputLanes(engine);
             if (lanes != IntPtr.Zero) Floor.Tick(lanes, seconds, nowMs);

@@ -191,6 +191,17 @@ namespace InFalsusAutoPlay
         }
 
         /// <summary>
+        /// _HA — the note kind, `_fA._be`. Only the two the sky plane uses are named: `_VD._Oz`
+        /// tests `== 4` for the flick it hands to `_VD._nz`, and `== 5` for the bar it grades
+        /// inline, and those two are the only kinds that ever appear on that plane.
+        /// </summary>
+        internal static class NoteType
+        {
+            internal const int SkyFlick = 4;   // _HA._BE
+            internal const int SkyBar = 5;     // _HA._cE
+        }
+
+        /// <summary>
         /// _cH — a judgement group, where the game writes the grade. Reached through `_T._XC`, a
         /// `Dictionary&lt;long, Memory&lt;_cH&gt;&gt;` keyed by note id.
         /// </summary>
