@@ -35,17 +35,38 @@ namespace InFalsusAutoPlay
         /// so a switch can be flipped without restarting the game.
         ///
         /// Everything downstream reads a setting at the moment it needs it, so a new value applies from
-        /// the next tick. A file that cannot be read leaves the settings already in force alone —
-        /// falling back to a default because of a transient read failure would silently turn autoplay
-        /// off in the middle of a run.
+        /// the next tick. A file that is there but cannot be read leaves the settings already in force
+        /// alone — falling back to a default because of a transient read failure would silently turn
+        /// autoplay off in the middle of a run.
+        ///
+        /// A key the file does not name is a different case and goes back to its default, so that
+        /// removing a line does what it looks like it does. The two settings differ in which way that
+        /// errs: an `autoplay` line that is deleted returns the switch to on, and a `noscore=0` line
+        /// that is deleted returns the record to being skipped — which is the state the key exists for.
         /// </summary>
         internal static void Load()
         {
             try
             {
-                if (!File.Exists(Config.Path)) return;
+                if (!File.Exists(Config.Path))
+                {
+                    // Nothing is there, so nothing names a key: the rule below applies, not the
+                    // read-failure rule. Deleting the file is how someone says "I have no settings", and
+                    // leaving the last file's answers in force would contradict that until a restart.
+                    Config.Autoplay = Config.AutoplayDefault;
+                    Config.NoScore = Config.NoScoreDefault;
+                    return;
+                }
 
-                foreach (string raw in File.ReadAllLines(Config.Path))
+                // Read into a local before assigning anything: a file that cannot be read has to leave
+                // the settings in force, and a reset placed above this line would have undone that on
+                // the way to the exception. Once the lines are in hand the read has happened.
+                string[] lines = File.ReadAllLines(Config.Path);
+
+                Config.Autoplay = Config.AutoplayDefault;
+                Config.NoScore = Config.NoScoreDefault;
+
+                foreach (string raw in lines)
                 {
                     string line = raw.Trim();
                     if (line.Length == 0 || line[0] == '#') continue;
@@ -107,9 +128,11 @@ namespace InFalsusAutoPlay
                     if (!trimmed.Substring(0, eq).Trim().Equals(Key, StringComparison.OrdinalIgnoreCase))
                         continue;
 
+                    // Every match, not the first. <see cref="Load"/> applies a file's lines in order, so
+                    // the last line to name the key is the one in force; editing an earlier one would
+                    // leave the file saying one thing and the game doing another.
                     lines[i] = Line(Key, on);
                     replaced = true;
-                    break;
                 }
 
                 if (!replaced)

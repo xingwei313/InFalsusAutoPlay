@@ -46,6 +46,16 @@ namespace InFalsusAutoPlay
         private readonly double[] _releaseAtMs = new double[Offsets.Plane.LaneCount];
 
         /// <summary>
+        /// Set when this floor's song is a rebuild of one that was still holding lanes.
+        ///
+        /// The input array belongs to the engine, not to the chart, so lanes a song was holding outlive
+        /// it — and the new floor's schedule knows nothing about them. This is what makes the rebuild
+        /// inherit the debt: the first let-go clears every lane rather than only the ones this schedule
+        /// can name. Cleared by the first pass that sweeps all of them.
+        /// </summary>
+        private bool _inherited;
+
+        /// <summary>
         /// Set by <see cref="ClearLanes"/>, taken by the next <see cref="Release"/>.
         ///
         /// Dropping the schedule is not enough on its own: forgetting stops the held flag being
@@ -66,9 +76,16 @@ namespace InFalsusAutoPlay
         internal long Late;
         internal int Cursor => _next;
 
-        internal Floor(Chart chart)
+        /// <summary>
+        /// <paramref name="previous"/> is the floor of the song this one replaces, when there was one:
+        /// whether it was holding lanes is the one thing about it that has to be carried over. See
+        /// <see cref="_inherited"/>.
+        /// </summary>
+        internal Floor(Chart chart, Floor previous)
         {
             _chart = chart;
+            _inherited = previous != null && previous.HoldsAny;
+
             ClearLanes();
         }
 
@@ -81,6 +98,57 @@ namespace InFalsusAutoPlay
         {
             for (int i = 0; i < _releaseAtMs.Length; i++) _releaseAtMs[i] = NotHeld;
             _clearAll = true;
+        }
+
+        /// <summary>
+        /// Whether any lane is held on autoplay's behalf, and so whether there is anything left to let
+        /// go of: this song's own schedule, or one a song this floor replaced was holding when the
+        /// chart was rebuilt under it.
+        /// </summary>
+        internal bool HoldsAny
+        {
+            get
+            {
+                if (_inherited) return true;
+
+                for (int i = 0; i < _releaseAtMs.Length; i++)
+                    if (_releaseAtMs[i] != NotHeld) return true;
+
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Lets go of every lane, for when the mod stops driving them: the switch turned off
+        /// mid-song, or a detour that faulted. The frame calls this while that is the state, and it
+        /// does nothing after the first call — see <see cref="Song.LetGoLanes"/>.
+        ///
+        /// A held lane is not something the game will shrug off. `_pz`'s hold branch walks a hold
+        /// note's lanes and grades from the best one it finds:
+        ///
+        ///     for (lane = note.first; lane &lt;= note.last; ++lane)
+        ///         if (input[lane].held) best = max(best, note.delta)
+        ///         else                  best = max(best, note.delta + (now - input[lane].lastInput) * 1000)
+        ///
+        /// — which is why a lane is re-asserted every tick while the note lasts, and equally why a
+        /// flag the mod set and then walked away from keeps grading later hold notes in that lane.
+        /// The game's own key handler clears it the next time that key is pressed and released; this
+        /// covers the lanes the player never touches again.
+        ///
+        /// Written as a release pass whose every deadline has already passed, so it holds whatever
+        /// the schedule said: the same state the first tick after a reset writes.
+        /// </summary>
+        internal void LetGo(IntPtr lanes, double tickSeconds)
+        {
+            if (!HoldsAny) return;
+
+            // Logged because it is otherwise invisible: the lanes simply stop being held, which looks
+            // exactly like a note that never needed holding.
+            Diagnostics.Info($"floor lanes let go at {tickSeconds:F1}s - the mod is not playing them " +
+                             "any more");
+
+            ClearLanes();
+            Release(lanes, tickSeconds, double.PositiveInfinity);
         }
 
         /// <summary>Called from the `_Oz` detour, before the original body runs.</summary>
@@ -227,6 +295,10 @@ namespace InFalsusAutoPlay
             bool clearAll = _clearAll;
             _clearAll = false;
 
+            // A pass that clears every lane pays off whatever a rebuilt song left behind, whether this
+            // schedule can name it or not.
+            if (clearAll) _inherited = false;
+
             for (int lane = 0; lane < Offsets.Plane.LaneCount; lane++)
             {
                 if (clearAll || Expired(lane, nowMs)) _releaseAtMs[lane] = NotHeld;
@@ -237,10 +309,17 @@ namespace InFalsusAutoPlay
 
                 IntPtr e = Memory.Lane(lanes, lane);
 
-                // Cleared on every lane. The game's own per-frame clear is not enough here: a live edge
-                // no note consumes makes _pz commit a Miss on the next note within 100-150 ms of it, and
-                // this is the last point before _Oz reads.
+                // Both per-event flags, on every lane. The game clears them in `_tD._Az` at the start of
+                // an input event, but not every path into `_Oz` clears before it: `_Qz`, the mouse, calls
+                // `_Oz` first and `_Az` after, so a tick entered that way still carries the `Consumed`
+                // flags `_pz` set while grading the previous tick. A lane left marked consumed is a lane
+                // whose fresh edge `_pz` will not take, and the note that edge was written for goes
+                // ungraded. This is the last point before `_Oz` reads, so it is where that is fixed.
+                //
+                // A live edge is the other half of the same problem: one no note consumes makes `_pz`
+                // commit a Miss on the next note within 100-150 ms of it.
                 *(byte*)(e + Offsets.InputLane.PressEdge) = 0;
+                *(byte*)(e + Offsets.InputLane.Consumed) = 0;
 
                 if (_releaseAtMs[lane] == NotHeld)
                 {

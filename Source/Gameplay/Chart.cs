@@ -186,8 +186,18 @@ namespace InFalsusAutoPlay
                 IntPtr arr = Memory.Ptr(holder + Offsets.PlaneHolder.NoteArray);
                 if (!Memory.LooksLikeObject(arr)) continue;
 
-                int size = Memory.I32(arr + Offsets.Runtime.ListSize);
-                if (size <= 0 || size > 200000) continue;
+                int slots = Memory.I32(arr + Offsets.Runtime.ListSize);
+                if (slots <= 0 || slots > 200000) continue;
+
+                // The live count, not the array's length. `_hA._ye` is allocated at a fixed size and
+                // `_hA._ze` is how much of it this chart filled — the game never walks past `_ze`, it
+                // slices with it at both of its own read sites. Reading the length instead takes whatever
+                // sits in the tail: zeroes for a freshly allocated holder, but a reused one holds the
+                // previous chart's notes, and those carry legal sides and legal timestamps and would be
+                // read as real notes and played. Reading `_ze` is what lets `Collect` stop treating a
+                // zero timestamp as "there is no note here" — the two halves are one change.
+                int size = Memory.I32(holder + Offsets.PlaneHolder.Count);
+                if (size <= 0 || size > slots) continue;
 
                 // An `_fA` array is in hand, so its element size can be measured rather than assumed.
                 // Everything below indexes it by that size.
@@ -242,7 +252,13 @@ namespace InFalsusAutoPlay
 
                 int start = Memory.I32(p + Offsets.Note.StartMs);
                 int end = Memory.I32(p + Offsets.Note.EndMs);
-                if (start <= 0 || end < start || start > 6 * 60 * 60 * 1000) { badTime++; continue; }
+                // `start < 0`, not `<= 0`. Nothing in the game says a note cannot sit at time zero, and
+                // dropping one is silent — which is the kind of filter this reader is not allowed to
+                // have. The zero-filled tail this used to double as a guard against is gone now that the
+                // caller reads the holder's live count, and the two belong together: if that count ever
+                // goes back to the array's length, this has to go back to `<= 0` or the tail becomes
+                // phantom notes.
+                if (start < 0 || end < start || start > 6 * 60 * 60 * 1000) { badTime++; continue; }
 
                 list.Add(new ChartNote(
                     start, end,

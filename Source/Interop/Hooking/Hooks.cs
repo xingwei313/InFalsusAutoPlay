@@ -128,6 +128,11 @@ namespace InFalsusAutoPlay
             DetachSettingsAwake();   // the hook itself is Debug-only; see Probe/SettingsAwakeHook.cs
 #endif
             DetachSettingsShow();
+
+            // A borrowed row with no handler behind it is the state AssistRow exists to avoid leaving
+            // behind: the row would still say AUTO while a press went to the game's assist setting.
+            // `Release` takes the detour off itself, so the call below is the no-op it looks like.
+            AssistRow.Unload();
             DetachBarValueChanged();
         }
 

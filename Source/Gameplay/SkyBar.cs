@@ -38,11 +38,13 @@ namespace InFalsusAutoPlay
     /// (`_HA._Yb`, the same function that positions it), not from the cursor, so nothing else is
     /// needed for it either.
     ///
-    /// `_OfA`, `_pfA` and `_tfA` are read and written only inside `_VD._Oz` and `_VD._oz` — checked
-    /// by scanning every instruction in the binary that touches `_VD+0x18`, `+0x20` and `+0x52` with
-    /// `_VD` as the base. `_VD._Iz()`, the only accessor that hands the struct out, has no callers.
-    /// Track reads none of it: the safe-area visuals are driven from `Track._gBA`, which does not even
-    /// receive the engine. So this cannot make the judgement disagree with the picture.
+    /// `_OfA`, `_pfA` and `_tfA` are written only inside `_VD._Oz` and its timer `_VD._oz`, plus
+    /// `_Ae._jZ` reached from `_VD._sz`, which writes the same three values this does. Reads are not
+    /// the engine's alone: `_Ae` is copied by value and handed to its own methods, so `Track._gBA`
+    /// reads them through `_Ae._kZ()` — `_tfA && timers ? _sfA : 0` — and spends the answer on the
+    /// shield's colour and the judgement line's opacity. Pinning makes that read "on the bar, safe area
+    /// full", which is the state a perfect run is in, so the picture agrees with the judgement rather
+    /// than contradicting it. Change these pins and that is the code to look at first.
     /// </summary>
     internal sealed class SkyBar
     {

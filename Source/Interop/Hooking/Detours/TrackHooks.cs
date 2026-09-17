@@ -15,7 +15,7 @@ namespace InFalsusAutoPlay
     /// </summary>
     internal static unsafe partial class Hooks
     {
-        /// <summary>`Track.OnEnable` — a four-instruction forwarder to `Track._ABA`.</summary>
+        /// <summary>`Track.OnEnable` — a two-instruction forwarder to `Track._ABA`.</summary>
         private const long RvaTrackOnEnable = 0x66EBC0;
 
         private const long RvaTrackUpdate = 0x66EBD0;

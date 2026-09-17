@@ -54,8 +54,17 @@ namespace InFalsusAutoPlay
         /// the thing they aim with and removing it makes the plane unplayable. It is pointless only
         /// when autoplay is moving the cursor itself — then nothing the player does with the mouse
         /// reaches it and there is nothing for it to show.
+        ///
+        /// <para>
+        /// `Hooks.Writing` rather than `Config.Autoplay`, for the reason that property exists: a detour
+        /// that has faulted switches the mod off, and being switched off has to mean leaving nothing
+        /// behind. Reading the setting alone would keep the judgement point hidden after the mod had
+        /// stopped moving the cursor — the plane unplayable, which is the state this property is here to
+        /// avoid. It comes back on the next frame: the re-assert that reads this runs on `Track.Update`,
+        /// a detour that does not stop at a fault.
+        /// </para>
         /// </summary>
-        private static bool ShouldHide => Config.Autoplay && Config.Sky && Config.HideCursor;
+        private static bool ShouldHide => Hooks.Writing && Config.Sky && Config.HideCursor;
 
         /// <summary>
         /// The objects that make up the judgement point. The renderer is listed next to the transform

@@ -213,7 +213,7 @@ namespace InFalsusAutoPlay
                     // Give it up rather than leave the claim standing: the re-assert runs every frame
                     // off the borrowed row's own panel, and a claim kept across a page that could not be
                     // read is exactly the shape that ends in writes aimed at a torn-down object.
-                    if (Current != null) Release("its assist row is not readable");
+                    if (Current != null) Release(NotReadable);
                     else NoteFailure("the assist row is not readable");
                     return;
                 }
@@ -243,6 +243,29 @@ namespace InFalsusAutoPlay
                 if (byLooks != unavailable)
                     Diagnostics.Info($"AUTO row: the flag says unavailable but the row does not look it " +
                                      $"({evidence}); taking it over anyway");
+
+                // The row is what the claim is about, so the row is what says whether the claim still
+                // stands: if the page arriving now hands out a different one, the row the mod borrowed
+                // belongs to a page that has been rebuilt underneath it, and every write below — the
+                // retitle, the switch — would land in the torn-down object while the row actually on
+                // screen kept the game's label.
+                //
+                // Two weaker tests were rejected. Comparing the panel pointer misses a rebuilt page
+                // that landed on the same address. Asking whether the borrowed page is *active* is wrong
+                // the other way: a page that is merely closed and reopened is the same page with the
+                // same row, and giving the claim up there would detach and re-attach this page's handler
+                // on every visit — a stall of its own documented cost each time, and through an attach
+                // that cannot report failure.
+                //
+                // Falls through rather than returning, so the borrow below starts from this page.
+                //
+                // Both pointers, not just the row: either one can land on an address a rebuilt page
+                // freed, and a claim kept through that would leave the saved texts keyed to a row object
+                // that no longer exists — `Remember` dedups by pointer, so the new row's own text would
+                // never be recorded and `RestoreAll` would put the old block back. Two pointers aliasing
+                // at once is a much smaller coincidence than one, and this costs a comparison.
+                if (Current != null && (Current._panel != panel || Current._row != row))
+                    Release(AnotherPage);
 
                 if (Current == null && TryTakeOver(panel, row) == null) return;
 
@@ -370,12 +393,37 @@ namespace InFalsusAutoPlay
         }
 
         /// <summary>
+        /// Gives the row back when the mod is being unloaded, from <see cref="Hooks.Uninstall"/>.
+        ///
+        /// Without this the row keeps the mod's label and the mod's switch with nothing behind it
+        /// answering a press, so a press reaches the game's assist setting under a label that says AUTO.
+        /// That is the one state this feature must not be left in, and it is the same one
+        /// <see cref="Release"/> exists to prevent — worth closing even though the only caller is the
+        /// end of the process.
+        /// </summary>
+        internal static void Unload() => Release(Unloading);
+
+#if DEBUG
+        /// <summary>Why a claim was dropped. Every one of these is an argument to <see cref="Release"/>,
+        /// which hands it to a `[Conditional("DEBUG")]` log — so in a Release build the literal would be
+        /// a string nothing can print, and one that costs bytes in the assembly at that.</summary>
+        private const string NotReadable = "its assist row is not readable";
+        private const string AnotherPage = "another page is up";
+        private const string Unloading = "the mod is unloading";
+#else
+        private const string NotReadable = "";
+        private const string AnotherPage = "";
+        private const string Unloading = "";
+#endif
+
+        /// <summary>
         /// Gives the row back: the mod's claim on its presses and its per-frame re-assert first, then
         /// its texts. The row ends up the game's in every respect, with no detour of the mod's left on
         /// any function it reaches.
         ///
         /// <para>
-        /// Called both when the page asks for the row again and when the page cannot be read at all, so
+        /// Called when the page takes the row back, when the page arriving is not the one the row came
+        /// from, when the row cannot be read at all, and when the mod is unloading — so
         /// <paramref name="evidence"/> is a reason rather than a verdict.
         /// </para>
         /// </summary>

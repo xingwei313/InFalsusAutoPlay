@@ -150,6 +150,13 @@ namespace InFalsusAutoPlay
                     _leave = Marshal.GetDelegateForFunctionPointer<LeaveGameplayFn>(target);
             }
 
+            // Resolution failed, which needs both the name route and the RVA fallback to miss — so this
+            // is not a path worth retrying every frame, and it is not a reason to stop redirecting
+            // either. The two halves are not equally important: redirecting is what keeps the play out
+            // of the record, and `_Ok` only puts the session down, which the next song's start does
+            // anyway. A play that is not recorded with the session left standing is the right way round;
+            // the other order records the mod's play, which is the one outcome this feature exists to
+            // prevent.
             if (_leave == null) return;
 
             // The argument is zero because that is what the game passes: both of the binary's call

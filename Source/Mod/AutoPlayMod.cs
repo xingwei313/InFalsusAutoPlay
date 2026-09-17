@@ -46,9 +46,13 @@ namespace InFalsusAutoPlay
                 Offsets.Resolve();
                 SettingsOffsets.Resolve();
 
-#if DEBUG
+                // One of the three lines a Release carries — see Log's summary. It is the line that
+                // answers "did a game update move anything", and the only place that answer can be read
+                // without a Debug build: `moved=0 unresolved=0` is a pass, `moved=3` says which field to
+                // look at. The artifact check looks for this line's bytes, so keeping the call inside a
+                // build switch is the difference between an assertion that tests the build and one that
+                // tests a string sitting in a method nothing calls.
                 Diagnostics.Load(FieldResolver.Stats());
-#endif
 
                 Hooks.Install();
             }

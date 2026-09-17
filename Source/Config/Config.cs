@@ -17,13 +17,27 @@ namespace InFalsusAutoPlay
         // ---------------------------------------------------------------- the setting
 
         /// <summary>
+        /// The answer a setting has when the file does not name it.
+        ///
+        /// A key that is removed from the file puts its setting back to one of these, so the file reads
+        /// as the whole truth about the two settings rather than as a set of overrides whose absence
+        /// leaves the last value in force — which is what makes "the mod does not write the default out"
+        /// mean "the default is what happens".
+        /// </summary>
+        internal const bool AutoplayDefault = true;
+        internal const bool NoScoreDefault = true;
+
+        /// <summary>
         /// Play the chart, or only watch it.
         ///
         /// Off means observe only: the mod still reads the chart and reports every grade the game
         /// produced, but writes nothing — no lane presses and no sky pins. That is the mode for
-        /// checking the offsets against a human's play.
+        /// checking the offsets against a human's play. A song that was already being played when the
+        /// switch was turned off is the one case where it writes anyway, and then only once: the lanes
+        /// it was holding are let go of rather than left held under the game's hold grading — see
+        /// <see cref="Floor.LetGo"/>.
         /// </summary>
-        internal static bool Autoplay = true;
+        internal static bool Autoplay = AutoplayDefault;
 
         /// <summary>
         /// Whether a song the mod played is allowed to leave a record.
@@ -41,7 +55,7 @@ namespace InFalsusAutoPlay
         /// play for the player. Off is a real answer all the same: watching an autoplayed run through
         /// to the results screen is how the score the mod produces is read.
         /// </summary>
-        internal static bool NoScore = true;
+        internal static bool NoScore = NoScoreDefault;
 
         // ---------------------------------------------------------------- where it lives
 

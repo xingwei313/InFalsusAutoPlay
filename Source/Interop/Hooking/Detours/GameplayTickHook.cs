@@ -63,16 +63,19 @@ namespace InFalsusAutoPlay
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
         private static void OzDetour(IntPtr self, double time, IntPtr queue, IntPtr methodInfo)
         {
-            if (!Faulted)
+            try
             {
-                try
-                {
-                    Song.Frame(self, time);
-                }
-                catch (Exception e)
-                {
-                    Fault("_Oz", e);
-                }
+                if (!Faulted) Song.Frame(self, time);
+
+                // Still reached after a fault, and only to undo: a lane the mod was holding has to be
+                // let go of even though nothing else of the mod will run again, because the game goes
+                // on grading hold notes from it. Once that has happened this costs a comparison per
+                // lane and touches nothing.
+                else Song.LetGo(self, time);
+            }
+            catch (Exception e)
+            {
+                Fault("_Oz", e);
             }
 
             _ozTramp(self, time, queue, methodInfo);

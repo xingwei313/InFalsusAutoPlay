@@ -22,8 +22,9 @@ namespace InFalsusAutoPlay
     /// <see cref="Note"/>.Size, <see cref="Judgement"/>.Size and everything in
     /// <see cref="Runtime"/> stay build constants. (The containers are IL2CPP's layout rather than
     /// the game's, so a game patch does not move them.) One field is also out of reach:
-    /// <see cref="NotePlayer"/>.NoteList, because it is not a field of the player but the third slot
-    /// of a <c>ValueTuple</c> that is.
+    /// <see cref="NotePlayer"/>.NoteList, because it is not a field of the player but a slot of a
+    /// <c>ValueTuple</c> that is — `Item2`, not a field name, which is why the lookup goes through
+    /// <see cref="FieldResolver.TupleItem"/>.
     /// </para>
     /// <para>
     ///     Engine       _VD            the gameplay engine
@@ -70,9 +71,10 @@ namespace InFalsusAutoPlay
         /// so _VD+0x18 is _Ae._OfA itself rather than a pointer to it. Resolving one of these takes
         /// two lookups for that reason: the struct's offset on _VD, then the field's offset in _Ae.
         ///
-        /// A sky bar's grade turns on three of these, and every read and write of all three in the
-        /// whole binary is inside `_VD._Oz` and its timer `_VD._oz` — see <see cref="SkyBar"/>.
-        /// Nothing in Track reads them, so pinning them changes the judgement and nothing else.
+        /// A sky bar's grade turns on three of these, and writes to all three happen only inside
+        /// `_VD._Oz`, its timer `_VD._oz` and `_Ae._jZ` — see <see cref="SkyBar"/>. Track reads them
+        /// too, through a copy of the struct and `_Ae._kZ()`, which is what colours the shield; the
+        /// pins hold that picture in the state a perfect run is in.
         /// </summary>
         internal static class SafeArea
         {
@@ -204,6 +206,14 @@ namespace InFalsusAutoPlay
         /// <summary>
         /// _cH — a judgement group, where the game writes the grade. Reached through `_T._XC`, a
         /// `Dictionary&lt;long, Memory&lt;_cH&gt;&gt;` keyed by note id.
+        ///
+        /// <para>
+        /// The one group whose type is not in `Il2CppGame.dll`: `_cH` comes from `Il2CppGame.Data.dll`,
+        /// so these three resolve only if that assembly is already loaded when <see cref="Resolve"/>
+        /// runs — the name index is built once, from whatever is loaded at that moment, and never looks
+        /// again. A run that reports these as unresolved is saying the assembly was late, not that the
+        /// fields moved.
+        /// </para>
         /// </summary>
         internal static class Judgement
         {

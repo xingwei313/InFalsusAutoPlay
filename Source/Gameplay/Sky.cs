@@ -149,12 +149,14 @@ namespace InFalsusAutoPlay
         /// This also moves the value <see cref="Hold"/> pins, so the cursor stays on the note it was
         /// aimed at rather than snapping back to wherever it started.
         ///
-        /// Only notes inside the window `_VD._nz` will accept are aimed at. Past
-        /// <see cref="JudgementWindowMs"/> `_nz` returns without grading anything — and it is still
-        /// called for every unjudged flick on the plane on every tick, so aiming at those parks the
-        /// cursor on a note nothing is about to happen to. A burst reads the cursor every frame for as
-        /// long as it animates, which is what turns a parked cursor into a hit effect that has slid
-        /// off the note it belongs to.
+        /// Only the tick a flick is actually due takes the cursor: `_nz` grades on the first tick whose
+        /// delta has gone negative, and until then the cursor belongs to whatever bar is being held —
+        /// see <see cref="AimAtBar"/>. That matters because this runs from inside `_Oz`: `_Oz` walks the
+        /// sky plane's notes in order and reads the cursor afresh at each one, so a flick that takes the
+        /// cursor early holds it against every bar sharing that tick. Aiming at the whole window `_nz`
+        /// accepts would hold it for up to 200 ms per flick, which is every tick a bar overlapping one
+        /// needs to open its next group. A bar that loses one tick loses nothing: the check is repeated
+        /// while the bar is live.
         /// </summary>
         internal void AimAt(IntPtr engine, IntPtr note)
         {
@@ -163,8 +165,7 @@ namespace InFalsusAutoPlay
             // so its first field is the note id rather than a klass pointer.
             if (!Memory.LooksLikeObject(engine) || !Memory.LooksLikeNote(note)) return;
 
-            // `_nz` opens with the same test, and grades nothing past it.
-            if (Memory.F64(note + Offsets.Note.DeltaMs) > JudgementWindowMs) return;
+            if (Memory.F64(note + Offsets.Note.DeltaMs) > 0.0) return;
 
             float x = BarGeometry.CurrentCentreX(note);
             if (float.IsNaN(x)) return;
@@ -178,12 +179,6 @@ namespace InFalsusAutoPlay
             _held = true;
             Write(engine);
         }
-
-        /// <summary>
-        /// How far ahead of its judgement moment a note may be aimed at — `_VD._nz`'s own
-        /// `if (delta > 200.0) return`, past which it grades nothing.
-        /// </summary>
-        private const double JudgementWindowMs = 200.0;
 
         /// <summary>
         /// The raw value sits outside 0..1 whenever the mouse is off the end of the strip, and the

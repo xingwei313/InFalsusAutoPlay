@@ -143,6 +143,7 @@ namespace InFalsusAutoPlay
             if (Measured.TryGetValue(label, out int known)) return known;
 
             int size = fallback;
+            bool measured = false;
             try
             {
                 if (Memory.LooksLikeObject(array))
@@ -153,7 +154,10 @@ namespace InFalsusAutoPlay
                         : Il2CppInterop.Runtime.IL2CPP.il2cpp_array_get_byte_length(array);
 
                     if (length > 0 && length <= 1_000_000 && bytes > 0 && bytes % length == 0)
+                    {
                         size = Adopt(label, (int)(bytes / length), fallback);
+                        measured = true;
+                    }
                 }
             }
             catch (Exception e)
@@ -162,7 +166,10 @@ namespace InFalsusAutoPlay
                 _failed++;
             }
 
-            Measured[label] = size;
+            // Only a measurement is cached. Caching the fallback would make the first unreadable array
+            // the answer for the rest of the session, which is backwards: the fallback is the value this
+            // build was reversed with, and measuring is how a build that moved it gets noticed.
+            if (measured) Measured[label] = size;
             return size;
         }
 
