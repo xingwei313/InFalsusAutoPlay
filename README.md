@@ -44,6 +44,10 @@ Debug构建产物位于 `bin/Debug/InFalsusAutoPlay.dll`。
 
 - [MelonLoader](https://github.com/LavaGang/MelonLoader) —— mod 加载器
 
+## 免责声明
+
+本仓库为非官方第三方项目，与 In Falsus、lowiro limited 及其关联公司、子公司、许可方或其他相关实体均无任何隶属、合作、赞助、认可、授权或其他关联关系，如有侵权请联系作者删除
+
 ## 真-致谢
 
 - deepseek v4.1 flash —— 重构屎山，查bug，部分逆向工作，build流程
